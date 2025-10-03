@@ -44,13 +44,15 @@ async def start_handler(client: Client, message):
         "**Use /help to see all available commands.**"
     )
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
-        [
-            InlineKeyboardButton("🛠️ Support", url="https://t.me/BOT_X_SUPPORT"),
-            InlineKeyboardButton("🗑️ Close", callback_data="close")
-        ]
-    ])
-    await client.send_message(chat_id, text, reply_markup=kb)
+    [InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
+    [
+        InlineKeyboardButton("🛠️ Support", url="https://t.me/BOT_X_SUPPORT"),
+        InlineKeyboardButton("📢 Channel", url="https://t.me/FZ_LINK")
+    ],
+    [InlineKeyboardButton("🗑️ Close", callback_data="close")]
+])
+
+await client.send_message(chat_id, text, reply_markup=kb)
     
 @app.on_message(filters.command("help"))
 async def help_handler(client: Client, message):
