@@ -1,4 +1,4 @@
-<h1 align="center">BioLink Protector Telegram Bot</h1>
+<h1 align="center">BioLinkscan Telegram Bot</h1>
 
 <p align="center">
   <a href="https://github.com/CREATORxBOT/Biolinkscanbot/stargazers">
