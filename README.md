@@ -1,11 +1,21 @@
 <h1 align="center">BioLink Protector Telegram Bot</h1>
 
 <p align="center">
-  <a href="https://github.com/bisnuray/BioLink-Protector/stargazers"><img src="https://img.shields.io/github/stars/bisnuray/BioLink-Protector?color=blue&style=flat" alt="GitHub Repo stars"></a>
-  <a href="https://github.com/bisnuray/BioLink-Protector/issues"><img src="https://img.shields.io/github/issues/bisnuray/BioLink-Protector" alt="GitHub issues"></a>
-  <a href="https://github.com/bisnuray/BioLink-Protector/pulls"><img src="https://img.shields.io/github/issues-pr/bisnuray/BioLink-Protector" alt="GitHub pull requests"></a>
-  <a href="https://github.com/bisnuray/BioLink-Protector/graphs/contributors"><img src="https://img.shields.io/github/contributors/bisnuray/BioLink-Protector?style=flat" alt="GitHub contributors"></a>
-  <a href="https://github.com/bisnuray/BioLink-Protector/network/members"><img src="https://img.shields.io/github/forks/bisnuray/BioLink-Protector?style=flat" alt="GitHub forks"></a>
+  <a href="https://github.com/CREATORxBOT/Biolinkscanbot/stargazers">
+    <img src="https://img.shields.io/github/stars/CREATORxBOT/Biolinkscanbot?color=blue&style=flat" alt="GitHub Repo stars">
+  </a>
+  <a href="https://github.com/CREATORxBOT/Biolinkscanbot/issues">
+    <img src="https://img.shields.io/github/issues/CREATORxBOT/Biolinkscanbot" alt="GitHub issues">
+  </a>
+  <a href="https://github.com/CREATORxBOT/Biolinkscanbot/pulls">
+    <img src="https://img.shields.io/github/issues-pr/CREATORxBOT/Biolinkscanbot" alt="GitHub pull requests">
+  </a>
+  <a href="https://github.com/CREATORxBOT/Biolinkscanbot/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/CREATORxBOT/Biolinkscanbot?style=flat" alt="GitHub contributors">
+  </a>
+  <a href="https://github.com/CREATORxBOT/Biolinkscanbot/network/members">
+    <img src="https://img.shields.io/github/forks/CREATORxBOT/Biolinkscanbot?style=flat" alt="GitHub forks">
+  </a>
 </p>
 
 <p align="center">
