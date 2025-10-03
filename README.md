@@ -45,7 +45,7 @@ Before you begin, ensure you have met the following requirements:
 ## Installation
 
 ```bash
-git clone https://github.com/bisnuray/BIOLINKSCANBOT
+git clone https://github.com/CREATORxBOT/Biolinkscanbot.git
 cd BioLink-Protector
 pip install -r requirements.txt
 
