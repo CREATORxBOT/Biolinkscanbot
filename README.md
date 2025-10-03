@@ -34,7 +34,7 @@
 
 ## 🎮 Demo Bot
 
-Try it live: [@BioLinScanBot](https://t.me/BoLinkScanBot)
+Try it live: [@BioLinkScanBot](https://t.me/BoLinkScanBot)
 
 ## Requirements
 
