@@ -369,128 +369,193 @@ async def check_bio(client: Client, message):
 
 if __name__ == "__main__":
     app.run()
-import asyncio
-import sqlite3
-import os
-from pyrogram import Client, filters
-from pyrogram.errors import RPCError, FloodWait
-from pyrogram.types import Message
+# ================= Broadcast Command ===================
+@app.on_message(filters.command("broadcast") & (filters.user(OWNER_ID) | filters.user(lambda _, __, m: is_sudo(m.from_user.id))))
+async def broadcast(client, message):
+    args = message.text.split(maxsplit=2)
+    if len(args) < 2:
+        return await message.reply_text("Usage: /broadcast <msg>\n/broadcast -pin <msg>\n/broadcast -user <msg>")
 
-# ================= CONFIG =================
-OWNER_ID = 123456789        # <-- Apna Telegram ID yahan dalna
-RATE_SLEEP = 0.35           # Delay between messages
-BATCH_SLEEP = 5             # Sleep between batches to avoid flood
-BATCH_SIZE = 50             # Number of messages per batch
-DATABASE = "data/bot.db"    # SQLite DB path
-# =========================================
+    flag = None
+    if args[1] in ["-pin", "-user"]:
+        if len(args) < 3:
+            return await message.reply_text("Usage: /broadcast -pin <msg> or /broadcast -user <msg>")
+        flag = args[1]
+        broadcast_text = args[2]
+    else:
+        broadcast_text = " ".join(args[1:])
 
-def load_targets(table: str):
-    if not os.path.exists(DATABASE):
-        return []
-    try:
-        conn = sqlite3.connect(DATABASE)
-        cur = conn.cursor()
-        cur.execute(f"SELECT chat_id FROM {table}")
-        rows = cur.fetchall()
-        conn.close()
-        return [int(r[0]) for r in rows]
-    except:
-        return []
+    cur.execute("SELECT user_id FROM users")
+    rows = cur.fetchall()
+    total_users = 0
+    sent_users = 0
+    pinned_users = 0
+    failed_users = 0
+    total_groups = 0
+    sent_groups = 0
+    pinned_groups = 0
+    failed_groups = 0
 
-def gather_targets(scope: str):
-    users, groups = [], []
-    if scope in ("all", "users"):
-        users = load_targets("users")
-    if scope in ("all", "groups"):
-        groups = load_targets("groups")
-    return list(dict.fromkeys(users)), list(dict.fromkeys(groups))
-
-async def send_to_target(client: Client, chat_id: int, message: Message):
-    try:
-        if message.media:
-            await client.copy_message(chat_id, message.chat.id, message.message_id)
-        else:
-            text = message.text or ""
-            # Add forwarded source info
-            if message.forward_from_chat:
-                source_title = message.forward_from_chat.title or message.forward_from_chat.username
-                source_link = f"https://t.me/{message.forward_from_chat.username}" if message.forward_from_chat.username else source_title
-                text = f"Forwarded from [{source_title}]({source_link})\n\n{text}"
-            elif message.forward_from:
-                source_name = message.forward_from.first_name
-                text = f"Forwarded from {source_name}\n\n{text}"
-            await client.send_message(chat_id, text, disable_web_page_preview=False)
-        return True
-    except FloodWait as e:
-        await asyncio.sleep(e.x)
-        return await send_to_target(client, chat_id, message)
-    except:
-        return False
-
-@app.on_message(filters.private & filters.command("broadcast", prefixes=["-"]))
-async def broadcast_handler(client: Client, msg: Message):
-    if msg.from_user.id != OWNER_ID:
-        return await msg.reply_text("❌ You are not authorized.")
-
-    if len(msg.command) < 2:
-        return await msg.reply_text("Usage: -broadcast <all|users|groups>\nReply to this command with the message to broadcast.")
-
-    if not msg.reply_to_message:
-        return await msg.reply_text("Reply to the post/message you want to broadcast.")
-
-    scope = msg.command[1].lower()
-    if scope not in ("all", "users", "groups"):
-        return await msg.reply_text("Invalid scope. Use: all, users, groups")
-
-    users, groups = gather_targets(scope)
-
-    stats = {
-        "users_sent": 0, "users_failed": 0,
-        "groups_sent": 0, "groups_failed": 0,
-        "users_failed_ids": [], "groups_failed_ids": []
-    }
-
-    all_targets = [("User", users), ("Group", groups)]
-
-    for category, target_list in all_targets:
-        batch_counter = 0
-        for chat_id in target_list:
-            success = await send_to_target(client, chat_id, msg.reply_to_message)
-            if category == "User":
-                if success:
-                    stats["users_sent"] += 1
-                else:
-                    stats["users_failed"] += 1
-                    stats["users_failed_ids"].append(chat_id)
+    # Pre-check groups vs users
+    for (uid,) in rows:
+        try:
+            chat = await client.get_chat(uid)
+            if chat.type in ("group", "supergroup"):
+                total_groups += 1
             else:
-                if success:
-                    stats["groups_sent"] += 1
+                total_users += 1
+        except:
+            failed_users += 1
+
+    progress_msg = await message.reply_text("📊 🔥ʙʀᴏᴀᴅᴄᴀꜱᴛ ʀᴇꜱᴜʟᴛ🔥\nProcessing...")
+
+    for uid, in rows:
+        try:
+            chat = await client.get_chat(uid)
+            if flag == "-user" and chat.type != "private":
+                if chat.type in ("group", "supergroup"):
+                    failed_groups += 1
                 else:
-                    stats["groups_failed"] += 1
-                    stats["groups_failed_ids"].append(chat_id)
+                    failed_users += 1
+                continue
 
-            batch_counter += 1
-            if batch_counter % BATCH_SIZE == 0:
-                await asyncio.sleep(BATCH_SLEEP)
-            await asyncio.sleep(RATE_SLEEP)
+            msg = await client.send_message(uid, broadcast_text)
+            if chat.type in ("group", "supergroup"):
+                sent_groups += 1
+                if flag == "-pin" and await bot_is_admin_with_permissions(client, uid, "can_pin_messages"):
+                    try: await msg.pin(disable_notification=True)
+                    except: pass
+                    pinned_groups += 1
+            else:
+                sent_users += 1
+                if flag == "-pin":
+                    try: await client.send_message(uid, "📌 [PINNED]\n" + broadcast_text)
+                    pinned_users += 1
+        except:
+            if chat.type in ("group", "supergroup"):
+                failed_groups += 1
+            else:
+                failed_users += 1
 
-            # Optional: progress update every 10 messages
-            total_done = stats["users_sent"] + stats["users_failed"] + stats["groups_sent"] + stats["groups_failed"]
-            if total_done % 10 == 0:
-                await msg.reply_text(
-                    f"📊 Progress Update:\n"
-                    f"Users Sent: {stats['users_sent']} | Users Failed: {stats['users_failed']}\n"
-                    f"Groups Sent: {stats['groups_sent']} | Groups Failed: {stats['groups_failed']}"
-                )
+    total_sent = sent_groups + sent_users
+    total_failed = failed_groups + failed_users
 
-    # Final report
-    report = (
-        "✅ Broadcast finished!\n\n"
-        f"Users Sent: {stats['users_sent']}\n"
-        f"Users Failed: {stats['users_failed']}\n"
-        f"Groups Sent: {stats['groups_sent']}\n"
-        f"Groups Failed: {stats['groups_failed']}\n\n"
-        f"Failed User IDs: {', '.join(map(str, stats['users_failed_ids'])) if stats['users_failed_ids'] else 'None'}\n"
-        f"Failed Group IDs: {', '.join(map(str, stats['groups_failed_ids'])) if stats['groups_failed_ids'] else 'None'}"
-    )
-    await msg.reply_text(report)
+    final_text = f"""📊 🔥ʙʀᴏᴀᴅᴄᴀꜱᴛ ʀᴇꜱᴜʟᴛ🔥
+
+✨Gʀᴏᴜᴘꜱ:
+      » ᴛᴏᴛᴀʟ: {total_groups}
+      » ꜱᴇɴᴛ: {sent_groups}
+      » ᴘɪɴɴᴇᴅ: {pinned_groups}
+      » ꜰᴀɪʟᴇᴅ: {failed_groups}
+
+🥀Uꜱᴇʀꜱ:
+      » ᴛᴏᴛᴀʟ: {total_users}
+      » ꜱᴇɴᴛ: {sent_users}
+      » ᴘɪɴɴᴇᴅ: {pinned_users}
+      » ꜰᴀɪʟᴇᴅ: {failed_users}
+
+🎉ᴛᴏᴛᴀʟ ꜱᴇɴᴛ: {total_sent}
+🤒ᴛᴏᴛᴀʟ ꜰᴀɪʟᴇᴅ: {total_failed}"""
+
+    await progress_msg.edit_text(final_text)
+
+# ================= Forward Broadcast (/fgcast) ===================
+@app.on_message(filters.command("fgcast") & (filters.user(OWNER_ID) | filters.user(lambda _, __, m: is_sudo(m.from_user.id))))
+async def fgcast(client, message):
+    args = message.text.split(maxsplit=2)
+    if len(args) < 2:
+        return await message.reply_text("Usage: /fgcast <msg_id|reply> [-pin/-user]")
+
+    flag = None
+    fg_message = None
+
+    if message.reply_to_message:
+        fg_message = message.reply_to_message
+        if len(args) >= 2 and args[1] in ["-pin", "-user"]:
+            flag = args[1]
+    else:
+        if args[1].isdigit():
+            try:
+                fg_message = await client.get_messages(message.chat.id, int(args[1]))
+            except:
+                return await message.reply_text("Message not found")
+        if len(args) >= 3 and args[1] in ["-pin", "-user"]:
+            flag = args[1]
+
+    if not fg_message:
+        return await message.reply_text("Reply to a message or provide message ID")
+
+    cur.execute("SELECT user_id FROM users")
+    rows = cur.fetchall()
+
+    total_users = 0
+    sent_users = 0
+    pinned_users = 0
+    failed_users = 0
+    total_groups = 0
+    sent_groups = 0
+    pinned_groups = 0
+    failed_groups = 0
+
+    # Pre-check
+    for (uid,) in rows:
+        try:
+            chat = await client.get_chat(uid)
+            if chat.type in ("group", "supergroup"):
+                total_groups += 1
+            else:
+                total_users += 1
+        except:
+            failed_users += 1
+
+    progress_msg = await message.reply_text("📊 🔥ʙʀᴏᴀᴅᴄᴀꜱᴛ ʀᴇꜱᴜʟᴛ🔥\nProcessing...")
+
+    for uid, in rows:
+        try:
+            chat = await client.get_chat(uid)
+            if flag == "-user" and chat.type != "private":
+                if chat.type in ("group", "supergroup"):
+                    failed_groups += 1
+                else:
+                    failed_users += 1
+                continue
+
+            fwd_msg = await fg_message.forward(uid)
+            if chat.type in ("group", "supergroup"):
+                sent_groups += 1
+                if flag == "-pin" and await bot_is_admin_with_permissions(client, uid, "can_pin_messages"):
+                    try: await fwd_msg.pin(disable_notification=True)
+                    except: pass
+                    pinned_groups += 1
+            else:
+                sent_users += 1
+                if flag == "-pin":
+                    try: await client.send_message(uid, "📌 [PINNED] Forwarded message below:")
+                    pinned_users += 1
+        except:
+            if chat.type in ("group", "supergroup"):
+                failed_groups += 1
+            else:
+                failed_users += 1
+
+    total_sent = sent_groups + sent_users
+    total_failed = failed_groups + failed_users
+
+    final_text = f"""📊 🔥ʙʀᴏᴀᴅᴄᴀꜱᴛ ʀᴇꜱᴜʟᴛ🔥
+
+✨Gʀᴏᴜᴘꜱ:
+      » ᴛᴏᴛᴀʟ: {total_groups}
+      » ꜱᴇɴᴛ: {sent_groups}
+      » ᴘɪɴɴᴇᴅ: {pinned_groups}
+      » ꜰᴀɪʟᴇᴅ: {failed_groups}
+
+🥀Uꜱᴇʀꜱ:
+      » ᴛᴏᴛᴀʟ: {total_users}
+      » ꜱᴇɴᴛ: {sent_users}
+      » ᴘɪɴɴᴇᴅ: {pinned_users}
+      » ꜰᴀɪʟᴇᴅ: {failed_users}
+
+🎉ᴛᴏᴛᴀʟ ꜱᴇɴᴛ: {total_sent}
+🤒ᴛᴏᴛᴀʟ ꜰᴀɪʟᴇᴅ: {total_failed}"""
+
+    await progress_msg.edit_text(final_text)
