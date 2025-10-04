@@ -18,7 +18,6 @@ from config import (
     API_ID,
     API_HASH,
     BOT_TOKEN,
-    OWNER_ID,
     URL_PATTERN
 )
 
@@ -27,7 +26,6 @@ app = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    OWNER_ID=BOT_OWNER_ID
 )
 
 @app.on_message(filters.command("start"))
