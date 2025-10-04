@@ -46,9 +46,14 @@ async def start_handler(client: Client, message):
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
         [
-            InlineKeyboardButton("🛠️ Support", url="https://t.me/BOT_X_SUPPORT"),
-            InlineKeyboardButton("📢 Channel", url="https://t.me/FZ_LINK")
+            InlineKeyboardButton("🛠️ 𝐒𝐔𝐏𝐏𝐎𝐑𝐓", url="https://t.me/BOT_X_SUPPORT"),
+            InlineKeyboardButton("📢 𝐂𝐇𝐀𝐍𝐍𝐄𝐋", url="https://t.me/FZ_LINK")
         ]
+        [
+            InlineKeyboardButton("𝐎ᴡɴᴇʀ", url="https://t.me/FZ_CREATOR"),
+            InlineKeyboardButton("📢 𝐀ʟʟ 𝐁ᴏᴛs", url="https://t.me/BOT_X_SUPPORT/11")
+    ],
+        [InlineKeyboardButton("🗑️ Close", callback_data="close")]
     ])
     await client.send_message(chat_id, text, reply_markup=kb)
     
