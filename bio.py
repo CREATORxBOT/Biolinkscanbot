@@ -1,7 +1,7 @@
 """
-Author: Bisnu Ray
-User: https://t.me/BisnuRay
-Channel: https://t.me/itsSmartDev
+Author: Rohit
+User: https://t.me/FZ_CREATOR 
+Channel: https://t.me/FZ_LINK
 """
 
 from pyrogram import Client, filters, errors
@@ -46,7 +46,7 @@ async def start_handler(client: Client, message):
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Add Me to Your Group", url=add_url)],
         [
-            InlineKeyboardButton("🛠️ Support", url="https://t.me/itsSmartDev"),
+            InlineKeyboardButton("🛠️ Support", url="https://t.me/BOT_X_SUPPORT"),
             InlineKeyboardButton("🗑️ Close", callback_data="close")
         ]
     ])
