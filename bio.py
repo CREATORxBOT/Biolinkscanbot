@@ -368,9 +368,8 @@ async def check_bio(client: Client, message):
         await reset_warnings(chat_id, user_id)
 
 if __name__ == "__main__":
-    app.run()
 # ================= Broadcast Command ===================
-@app.on_message(filters.command("broadcast") & (filters.user(OWNER_ID) | filters.user(lambda _, __, m: is_sudo(m.from_user.id))))
+@app.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
 async def broadcast(client, message):
     args = message.text.split(maxsplit=2)
     if len(args) < 2:
@@ -459,8 +458,9 @@ async def broadcast(client, message):
 
     await progress_msg.edit_text(final_text)
 
+
 # ================= Forward Broadcast (/fgcast) ===================
-@app.on_message(filters.command("fgcast") & (filters.user(OWNER_ID) | filters.user(lambda _, __, m: is_sudo(m.from_user.id))))
+@app.on_message(filters.command("fgcast") & filters.user(OWNER_ID))
 async def fgcast(client, message):
     args = message.text.split(maxsplit=2)
     if len(args) < 2:
