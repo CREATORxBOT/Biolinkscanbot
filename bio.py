@@ -369,3 +369,128 @@ async def check_bio(client: Client, message):
 
 if __name__ == "__main__":
     app.run()
+import asyncio
+import sqlite3
+import os
+from pyrogram import Client, filters
+from pyrogram.errors import RPCError, FloodWait
+from pyrogram.types import Message
+
+# ================= CONFIG =================
+OWNER_ID = 123456789        # <-- Apna Telegram ID yahan dalna
+RATE_SLEEP = 0.35           # Delay between messages
+BATCH_SLEEP = 5             # Sleep between batches to avoid flood
+BATCH_SIZE = 50             # Number of messages per batch
+DATABASE = "data/bot.db"    # SQLite DB path
+# =========================================
+
+def load_targets(table: str):
+    if not os.path.exists(DATABASE):
+        return []
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cur = conn.cursor()
+        cur.execute(f"SELECT chat_id FROM {table}")
+        rows = cur.fetchall()
+        conn.close()
+        return [int(r[0]) for r in rows]
+    except:
+        return []
+
+def gather_targets(scope: str):
+    users, groups = [], []
+    if scope in ("all", "users"):
+        users = load_targets("users")
+    if scope in ("all", "groups"):
+        groups = load_targets("groups")
+    return list(dict.fromkeys(users)), list(dict.fromkeys(groups))
+
+async def send_to_target(client: Client, chat_id: int, message: Message):
+    try:
+        if message.media:
+            await client.copy_message(chat_id, message.chat.id, message.message_id)
+        else:
+            text = message.text or ""
+            # Add forwarded source info
+            if message.forward_from_chat:
+                source_title = message.forward_from_chat.title or message.forward_from_chat.username
+                source_link = f"https://t.me/{message.forward_from_chat.username}" if message.forward_from_chat.username else source_title
+                text = f"Forwarded from [{source_title}]({source_link})\n\n{text}"
+            elif message.forward_from:
+                source_name = message.forward_from.first_name
+                text = f"Forwarded from {source_name}\n\n{text}"
+            await client.send_message(chat_id, text, disable_web_page_preview=False)
+        return True
+    except FloodWait as e:
+        await asyncio.sleep(e.x)
+        return await send_to_target(client, chat_id, message)
+    except:
+        return False
+
+@app.on_message(filters.private & filters.command("broadcast", prefixes=["-"]))
+async def broadcast_handler(client: Client, msg: Message):
+    if msg.from_user.id != OWNER_ID:
+        return await msg.reply_text("❌ You are not authorized.")
+
+    if len(msg.command) < 2:
+        return await msg.reply_text("Usage: -broadcast <all|users|groups>\nReply to this command with the message to broadcast.")
+
+    if not msg.reply_to_message:
+        return await msg.reply_text("Reply to the post/message you want to broadcast.")
+
+    scope = msg.command[1].lower()
+    if scope not in ("all", "users", "groups"):
+        return await msg.reply_text("Invalid scope. Use: all, users, groups")
+
+    users, groups = gather_targets(scope)
+
+    stats = {
+        "users_sent": 0, "users_failed": 0,
+        "groups_sent": 0, "groups_failed": 0,
+        "users_failed_ids": [], "groups_failed_ids": []
+    }
+
+    all_targets = [("User", users), ("Group", groups)]
+
+    for category, target_list in all_targets:
+        batch_counter = 0
+        for chat_id in target_list:
+            success = await send_to_target(client, chat_id, msg.reply_to_message)
+            if category == "User":
+                if success:
+                    stats["users_sent"] += 1
+                else:
+                    stats["users_failed"] += 1
+                    stats["users_failed_ids"].append(chat_id)
+            else:
+                if success:
+                    stats["groups_sent"] += 1
+                else:
+                    stats["groups_failed"] += 1
+                    stats["groups_failed_ids"].append(chat_id)
+
+            batch_counter += 1
+            if batch_counter % BATCH_SIZE == 0:
+                await asyncio.sleep(BATCH_SLEEP)
+            await asyncio.sleep(RATE_SLEEP)
+
+            # Optional: progress update every 10 messages
+            total_done = stats["users_sent"] + stats["users_failed"] + stats["groups_sent"] + stats["groups_failed"]
+            if total_done % 10 == 0:
+                await msg.reply_text(
+                    f"📊 Progress Update:\n"
+                    f"Users Sent: {stats['users_sent']} | Users Failed: {stats['users_failed']}\n"
+                    f"Groups Sent: {stats['groups_sent']} | Groups Failed: {stats['groups_failed']}"
+                )
+
+    # Final report
+    report = (
+        "✅ Broadcast finished!\n\n"
+        f"Users Sent: {stats['users_sent']}\n"
+        f"Users Failed: {stats['users_failed']}\n"
+        f"Groups Sent: {stats['groups_sent']}\n"
+        f"Groups Failed: {stats['groups_failed']}\n\n"
+        f"Failed User IDs: {', '.join(map(str, stats['users_failed_ids'])) if stats['users_failed_ids'] else 'None'}\n"
+        f"Failed Group IDs: {', '.join(map(str, stats['groups_failed_ids'])) if stats['groups_failed_ids'] else 'None'}"
+    )
+    await msg.reply_text(report)
